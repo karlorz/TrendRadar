@@ -1,0 +1,70 @@
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.memo
+*.venv
+venv/
+env/
+.venv/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage/
+*.cover
+*.mozc
+.hypothesis/
+.pytest_cache/
+
+# Sphinx documentation
+docs/_build/
+
+# IDEs and editors
+.project
+.vscode/
+.idea/
+*.swp
+*.bak
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS
+.env
+.flaskenv
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+CLAUDE.local.md
