@@ -39,11 +39,7 @@ class AIClient:
         self.num_retries = config.get("NUM_RETRIES", 2)
         self.fallback_models = config.get("FALLBACK_MODELS", [])
 
-    def chat(
-        self,
-        messages: List[Dict[str, str]],
-        **kwargs
-    ) -> str:
+    def chat(self, messages: List[Dict[str, str]], **kwargs) -> str:
         """
         调用 AI 模型进行对话
 
@@ -57,9 +53,12 @@ class AIClient:
         Raises:
             Exception: API 调用失败时抛出异常
         """
+        # 处理 Gemini 兼容端点的特殊配置
+        model, api_base = self._process_gemini_config(self.model, self.api_base)
+
         # 构建请求参数
         params = {
-            "model": self.model,
+            "model": model,
             "messages": messages,
             "temperature": kwargs.get("temperature", self.temperature),
             "timeout": kwargs.get("timeout", self.timeout),
@@ -71,8 +70,8 @@ class AIClient:
             params["api_key"] = self.api_key
 
         # 添加 API Base（如果配置了）
-        if self.api_base:
-            params["api_base"] = self.api_base
+        if api_base:
+            params["api_base"] = api_base
 
         # 添加 max_tokens（如果配置了且不为 0）
         max_tokens = kwargs.get("max_tokens", self.max_tokens)
@@ -94,6 +93,86 @@ class AIClient:
         # 提取响应内容
         return response.choices[0].message.content
 
+    def _process_gemini_config(self, model: str, api_base: str) -> tuple[str, str]:
+        """
+        处理 Gemini 兼容端点的配置
+
+        Args:
+            model: 模型名称
+            api_base: API 基础 URL
+
+        Returns:
+            tuple: (处理后的模型名, 处理后的 API 基础 URL)
+        """
+        # 如果不是 Gemini 模型，直接返回
+        if not model.startswith("gemini/"):
+            return model, api_base
+
+        # 如果配置了自定义端点
+        if api_base:
+            # 确保端点格式正确
+            normalized_base = self._normalize_gemini_endpoint(api_base)
+
+            # 对于自定义 Gemini 兼容端点，使用 openai/ 前缀强制使用 OpenAI 协议
+            # 这样可以兼容所有提供 OpenAI 兼容接口的 Gemini 服务
+            if self._should_use_openai_protocol(model, api_base):
+                openai_model = model.replace("gemini/", "openai/")
+                return openai_model, normalized_base
+
+            return model, normalized_base
+
+        # 使用官方 Gemini 端点
+        return model, api_base
+
+    def _normalize_gemini_endpoint(self, endpoint: str) -> str:
+        """
+        标准化 Gemini API 端点格式
+
+        Args:
+            endpoint: 原始端点 URL
+
+        Returns:
+            str: 标准化后的端点 URL
+        """
+        if not endpoint:
+            return endpoint
+
+        # 移除末尾的斜杠
+        endpoint = endpoint.rstrip("/")
+
+        # 如果不包含 /v1，尝试添加
+        if "/v1" not in endpoint and "/v1beta" not in endpoint:
+            # 检查是否已经是完整的 API 路径
+            if not any(
+                endpoint.endswith(suffix)
+                for suffix in ["/chat", "/completions", "/generate"]
+            ):
+                endpoint += "/v1"
+
+        return endpoint
+
+    def _should_use_openai_protocol(self, model: str, api_base: str) -> bool:
+        """
+        判断是否应该使用 OpenAI 协议
+
+        Args:
+            model: 模型名称
+            api_base: API 基础 URL
+
+        Returns:
+            bool: 是否使用 OpenAI 协议
+        """
+        # 如果端点包含常见的 OpenAI 兼容路径，使用 OpenAI 协议
+        openai_indicators = [
+            "/v1/chat/completions",
+            "/v1/completions",
+            "/chat/completions",
+            "/openai",
+            "openai-",
+        ]
+
+        return any(indicator in api_base.lower() for indicator in openai_indicators)
+
     def validate_config(self) -> tuple[bool, str]:
         """
         验证配置是否有效
@@ -105,10 +184,49 @@ class AIClient:
             return False, "未配置 AI 模型（model）"
 
         if not self.api_key:
-            return False, "未配置 AI API Key，请在 config.yaml 或环境变量 AI_API_KEY 中设置"
+            return (
+                False,
+                "未配置 AI API Key，请在 config.yaml 或环境变量 AI_API_KEY 中设置",
+            )
 
         # 验证模型格式（应该包含 provider/model）
         if "/" not in self.model:
-            return False, f"模型格式错误: {self.model}，应为 'provider/model' 格式（如 'deepseek/deepseek-chat'）"
+            return (
+                False,
+                f"模型格式错误: {self.model}，应为 'provider/model' 格式（如 'deepseek/deepseek-chat'）",
+            )
+
+        # 验证 Gemini 特定配置
+        if self.model.startswith("gemini/"):
+            # 检查自定义端点是否有效
+            if self.api_base:
+                if not self._validate_gemini_endpoint(self.api_base):
+                    return (
+                        False,
+                        f"自定义 Gemini API 端点格式错误: {self.api_base}，应为有效的 HTTP/HTTPS URL",
+                    )
 
         return True, ""
+
+    def _validate_gemini_endpoint(self, endpoint: str) -> bool:
+        """
+        验证 Gemini API 端点格式
+
+        Args:
+            endpoint: API 端点 URL
+
+        Returns:
+            bool: 是否有效
+        """
+        if not endpoint:
+            return True  # 空字符串表示使用默认端点
+
+        # 基本格式验证
+        if not (endpoint.startswith("http://") or endpoint.startswith("https://")):
+            return False
+
+        # Gemini API 通常以 /v1/ 结尾
+        if not endpoint.endswith("/"):
+            endpoint += "/"
+
+        return True

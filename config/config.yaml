@@ -337,17 +337,28 @@ ai:
   api_key: ""                       # API Key（建议使用环境变量 AI_API_KEY）
   
   api_base: ""                      # 自定义 API 端点（可选，大多数情况留空）
-                                    # 示例: https://api.openai.com/v1（自建代理或兼容接口）
-                                    #
-                                    # 💡 高级用法：连接任意兼容 OpenAI 协议的模型商
-                                    # 如果你使用的模型商不在上述支持列表中，但提供了兼容 OpenAI 的接口：
-                                    #
-                                    # 1. api_base 填写: 服务商提供的接口地址
-                                    #    例如: https://api.example.com/v1
-                                    #
-                                    # 2. model 填写: "openai/" + 实际模型名称
-                                    #    例如: openai/deepseek-ai/DeepSeek-V3
-                                    #    (原理：前缀 openai/ 强制 LiteLLM 使用 OpenAI 协议格式进行通信)
+                                     # 示例: https://api.openai.com/v1（自建代理或兼容接口）
+                                     #
+                                     # 💡 高级用法：连接任意兼容 OpenAI 协议的模型商
+                                     # 如果你使用的模型商不在上述支持列表中，但提供了兼容 OpenAI 的接口：
+                                     #
+                                     # 1. api_base 填写: 服务商提供的接口地址
+                                     #    例如: https://api.example.com/v1
+                                     #
+                                     # 2. model 填写: "openai/" + 实际模型名称
+                                     #    例如: openai/deepseek-ai/DeepSeek-V3
+                                     #    (原理：前缀 openai/ 强制 LiteLLM 使用 OpenAI 协议格式进行通信)
+                                     #
+                                     # 🔸 Gemini 兼容端点配置示例：
+                                     # 对于提供 Gemini API 兼容接口的服务（如代理服务、自定义部署）：
+                                     # 
+                                     # model: "gemini/gemini-2.0-flash-exp"
+                                     # api_base: "https://your-gemini-proxy.com/v1"
+                                     #
+                                     # 注意：
+                                     # - 如果端点包含 /chat/completions 等路径，系统会自动使用 OpenAI 协议
+                                     # - 否则将使用原生 Gemini 协议格式
+                                     # - 端点会自动标准化格式（如添加 /v1 后缀）
 
 
   timeout: 120                      # 请求超时（秒）
