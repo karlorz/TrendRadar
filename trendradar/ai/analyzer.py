@@ -442,15 +442,6 @@ class AIAnalyzer:
 
         return news_content, rss_content, hotlist_total, rss_total, total_count
 
-    def _call_ai(self, user_prompt: str) -> str:
-        """调用 AI API（使用 LiteLLM）"""
-        messages = []
-        if self.system_prompt:
-            messages.append({"role": "system", "content": self.system_prompt})
-        messages.append({"role": "user", "content": user_prompt})
-
-        return self.client.chat(messages)
-
     @staticmethod
     def _extract_json_text(response: str) -> str:
         """
