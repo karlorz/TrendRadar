@@ -91,8 +91,41 @@ class AIClient:
         # 调用 LiteLLM
         response = completion(**params)
 
-        # 提取响应内容
-        return response.choices[0].message.content
+        # 提取响应内容（防御性：兼容不同提供商/异常结构）
+        choices = getattr(response, "choices", None)
+        if choices is None and isinstance(response, dict):
+            choices = response.get("choices")
+
+        if not choices:
+            preview = repr(response)
+            if len(preview) > 500:
+                preview = preview[:500] + "..."
+            raise ValueError(f"AI 响应缺少 choices，原始返回: {preview}")
+
+        first_choice = choices[0]
+        message = getattr(first_choice, "message", None)
+        if message is None and isinstance(first_choice, dict):
+            message = first_choice.get("message")
+
+        content = None
+        if message is not None:
+            content = getattr(message, "content", None)
+            if content is None and isinstance(message, dict):
+                content = message.get("content")
+
+        # 少数提供商可能使用 text 字段
+        if content is None:
+            content = getattr(first_choice, "text", None)
+            if content is None and isinstance(first_choice, dict):
+                content = first_choice.get("text")
+
+        if content is None:
+            preview = repr(first_choice)
+            if len(preview) > 500:
+                preview = preview[:500] + "..."
+            raise ValueError(f"AI 响应缺少内容字段（message.content/text），choice: {preview}")
+
+        return content if isinstance(content, str) else str(content)
 
     def validate_config(self) -> tuple[bool, str]:
         """
